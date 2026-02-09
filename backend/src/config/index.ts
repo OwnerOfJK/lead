@@ -7,7 +7,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
   ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, "Must be 64 hex characters (32 bytes)"),
-  HUBSPOT_ACCESS_TOKEN: z.string().min(1),
+  HUBSPOT_CLIENT_ID: z.string().min(1),
   HUBSPOT_CLIENT_SECRET: z.string().min(1),
   HUBSPOT_REDIRECT_URI: z.string().url(),
   PIPEDRIVE_CLIENT_ID: z.string().min(1),

@@ -47,7 +47,7 @@ export class HubSpotProvider implements ISourceProvider {
 
   getAuthUrl(userId: string): string {
     const params = new URLSearchParams({
-      client_id: config.HUBSPOT_ACCESS_TOKEN,
+      client_id: config.HUBSPOT_CLIENT_ID,
       redirect_uri: config.HUBSPOT_REDIRECT_URI,
       scope: SCOPES.join(" "),
       state: userId,
@@ -61,7 +61,7 @@ export class HubSpotProvider implements ISourceProvider {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
-        client_id: config.HUBSPOT_ACCESS_TOKEN,
+        client_id: config.HUBSPOT_CLIENT_ID,
         client_secret: config.HUBSPOT_CLIENT_SECRET,
         redirect_uri: config.HUBSPOT_REDIRECT_URI,
         code,
@@ -85,7 +85,7 @@ export class HubSpotProvider implements ISourceProvider {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "refresh_token",
-        client_id: config.HUBSPOT_ACCESS_TOKEN,
+        client_id: config.HUBSPOT_CLIENT_ID,
         client_secret: config.HUBSPOT_CLIENT_SECRET,
         refresh_token: connection.refreshToken,
       }),
