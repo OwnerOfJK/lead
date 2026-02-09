@@ -17,7 +17,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   const token = header.slice(7);
   try {
     const payload = jwt.verify(token, config.JWT_SECRET) as AuthPayload;
-    (req as any).user = payload;
+    req.user = payload;
     next();
   } catch {
     throw new AppError(401, "Invalid or expired token");
