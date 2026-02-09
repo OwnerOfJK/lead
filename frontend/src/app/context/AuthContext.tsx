@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
+    const storedToken = localStorage.getItem("jwt_token");
     const storedUser = localStorage.getItem("user");
     if (storedToken && storedUser) {
       setToken(storedToken);
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   function persist(token: string, user: User) {
-    localStorage.setItem("token", token);
+    localStorage.setItem("jwt_token", token);
     localStorage.setItem("user", JSON.stringify(user));
     setToken(token);
     setUser(user);
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
-    localStorage.removeItem("token");
+    localStorage.removeItem("jwt_token");
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);

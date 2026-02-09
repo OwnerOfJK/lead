@@ -1,7 +1,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("jwt_token") : null;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
