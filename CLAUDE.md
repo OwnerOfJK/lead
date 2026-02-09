@@ -4,116 +4,103 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Lead Manager is a RevOps tool for streamlining lead qualification and sales enablement. It aggregates data from HubSpot and LinkedIn, transcribes sales calls using OpenAI Whisper, and provides an AI chat assistant for context-aware lead interactions.
+Lead Manager is a multi-source contact intelligence platform. It aggregates data from CRM providers (HubSpot, Pipedrive), support platforms (Zendesk), and other sources into unified golden records with AI-powered interaction capabilities.
+
+**Architecture:** Separated frontend + backend + PostgreSQL, orchestrated via Docker Compose.
 
 **Key technologies:**
-- Next.js 15 (App Router) with React 19 and TypeScript
-- HubSpot CRM API integration
-- OpenAI API (Whisper for transcription, GPT-3.5-turbo for chat)
-- Tailwind CSS v4
+- **Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4
+- **Backend:** Express, TypeScript, Drizzle ORM, PostgreSQL
+- **Auth:** JWT (jsonwebtoken), bcryptjs
+- **Validation:** Zod
+
+## Project Structure
+
+```
+/
+├── frontend/          # Next.js application
+│   └── src/app/       # App Router pages and components
+├── backend/           # Express API server
+│   └── src/
+│       ├── config/    # Environment validation
+│       ├── db/        # Drizzle schema and connection
+│       ├── middleware/ # Auth, validation, error handling
+│       ├── modules/   # Feature modules (auth, etc.)
+│       └── types/     # Shared TypeScript types
+├── docker-compose.yml
+├── docs/              # Architecture documentation
+└── justfile           # Task runner commands
+```
 
 ## Development Commands
 
 ```bash
-# Development server with Turbopack
-npm run dev
+# Start all services (PostgreSQL + backend + frontend)
+just up
 
-# Production build
-npm run build
+# Stop services
+just down
 
-# Production server
-npm start
+# View logs
+just logs
 
-# Linting
-npm run lint
+# Stop and remove volumes
+just clean
 
-# Run all tests
-npm test
+# Generate Drizzle migrations
+just generate
 
-# Watch mode for tests
-npm run test:watch
-
-# Run only API tests
-npm run test:api
+# Apply migrations
+just migrate
 ```
 
 ## Environment Variables
 
-Required in `.env.local`:
-```
-HUBSPOT_API_KEY=your_hubspot_api_key
-OPENAI_API_KEY=your_openai_api_key
-```
+**Backend** (`backend/.env` — see `backend/.env.example`):
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — Secret for signing JWTs (min 16 chars)
+- `PORT` — Server port (default 4000)
+- `NODE_ENV` — development | production | test
+- `CORS_ORIGIN` — Allowed frontend origin
+
+**Frontend** (set via Docker Compose or `.env.local`):
+- `NEXT_PUBLIC_API_URL` — Backend URL (default http://localhost:4000)
 
 ## Architecture
 
-### Data Flow Pattern
+### Services
 
-The application follows a **fetch → enrich → aggregate** pattern:
+- **db**: PostgreSQL 16 on port 5432
+- **backend**: Express API on port 4000 — handles auth, migrations, business logic
+- **frontend**: Next.js on port 3000 — UI with client-side auth
 
-1. **Fetch**: HubSpot contacts with `hs_lead_status === "NEW"` are fetched via `/api/hubspot`
-2. **Enrich**: For each contact, frontend triggers parallel enrichment:
-   - LinkedIn profile data via `/api/linkedin` (currently mock implementation)
-   - Call transcription via `/api/call` (uses OpenAI Whisper on a test audio file)
-3. **Aggregate**: Data is combined into a `UserContext` object stored in component state
-4. **Interact**: AI chat assistant at `/api/chat` uses the aggregated context to answer questions
+### Database Schema (Drizzle)
 
-### Key Type Definitions
+Defined in `backend/src/db/schema.ts`:
+- `users` — Authentication accounts
+- `connections` — OAuth connections to external providers (per user)
+- `golden_records` — Unified contact identities
+- `source_contacts` — Raw contact data from each provider (JSONB)
+- `source_interactions` — Interaction data (emails, calls, tickets)
+- `identity_map` — Links golden records to provider-specific IDs
 
-Located in `src/app/types.ts`:
-- `HubSpotProfile`: Contact data from HubSpot CRM
-- `LinkedInProfile`: Scraped/API data from LinkedIn
-- `UserContext`: Aggregated context combining all data sources
+### Auth Flow
 
-### API Routes (Next.js App Router)
+- `POST /auth/register` — Create account, returns JWT
+- `POST /auth/login` — Authenticate, returns JWT
+- JWT stored in localStorage, sent as `Authorization: Bearer` header
+- `requireAuth` middleware verifies JWT on protected routes
 
-- `GET /api/hubspot`: Fetches contacts from HubSpot with NEW status
-- `POST /api/linkedin`: Returns LinkedIn profile data (currently mock, needs real scraping/API)
-- `POST /api/call`: Transcribes call recordings using OpenAI Whisper
-- `POST /api/chat`: AI assistant that answers questions using aggregated lead context
+### Frontend Auth
 
-### Component Structure
-
-- `page.tsx`: Main page that lists leads from HubSpot
-- `ContactCard.tsx`: Individual contact card with "Collect Data" action
-- `ContextCard.tsx`: Displays aggregated data (HubSpot + LinkedIn + transcription)
-- `ChatCard.tsx`: AI chat interface for asking questions about a lead
-
-### Data Aggregation
-
-The `aggregateData.ts` utility provides two main functions:
-- `fetchContactLinkedIn(lead)`: Calls LinkedIn API endpoint
-- `transcribeContactCalls(lead)`: Calls transcription API endpoint
-
-These are orchestrated in `ContactCard.tsx` to build the complete `UserContext`.
-
-## Testing
-
-Tests use Jest with ts-jest. Test files are located in `__tests__` directories.
-
-Current test coverage:
-- HubSpot API integration tests at `src/app/api/__tests__/hubspot-app-router.test.ts`
-
-Tests mock `global.fetch` to avoid hitting real APIs. The environment variable `HUBSPOT_API_KEY` is set to a test value in `beforeEach` blocks.
+- `AuthContext` provides `user`, `token`, `login()`, `register()`, `logout()`
+- `apiFetch()` utility auto-attaches JWT to API requests
+- Unauthenticated users redirected to `/login`
 
 ## Import Aliases
 
-The project uses `@/*` as an alias for `./src/*` (configured in tsconfig.json).
+- Frontend: `@/*` maps to `./src/*` (configured in `frontend/tsconfig.json`)
 
-Example: `import { HubSpotProfile } from "@/app/types"`
+## Detailed Architecture
 
-## Known Limitations & TODOs
-
-1. **LinkedIn integration**: Currently uses mock data. Needs real LinkedIn API integration or scraping implementation.
-2. **Call recordings**: Uses a single test audio file from production URL. Should integrate with HubSpot's call recording API.
-3. **HubSpot webhooks**: Premium feature for real-time contact updates not yet implemented.
-4. **Test coverage**: Needs tests for LinkedIn, call transcription, and chat endpoints.
-
-## AI Chat System
-
-The chat assistant at `/api/chat` is configured as a "sales manager at Factorial" (all-in-one business management software). It receives:
-- System prompt with company context
-- Aggregated lead data as context
-- User's question
-
-The AI provides concise, context-aware responses about leads to help with sales enablement.
+See `docs/v2_plan.md` for the full multi-source integration architecture, database schema design, and implementation phases.
