@@ -1,39 +1,27 @@
 {
-  "name": "app",
+  "name": "lead-manager-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:api": "jest --testPathPatterns=\"api\""
+    "lint": "next lint"
   },
   "dependencies": {
-    "@hubspot/api-client": "^13.0.0",
-    "@langfuse/openai": "^4.4.9",
-    "@langfuse/otel": "^4.4.9",
-    "@opentelemetry/sdk-node": "^0.208.0",
     "next": "15.3.8",
-    "openai": "^5.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
-    "jest": "^30.0.2",
-    "jest-environment-node": "^30.0.2",
     "tailwindcss": "^4",
-    "ts-jest": "^29.4.0",
     "typescript": "^5"
   }
 }
