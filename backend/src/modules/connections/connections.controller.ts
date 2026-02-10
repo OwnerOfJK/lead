@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from "express";
+import { eq, and } from "drizzle-orm";
 import { providerParamSchema, connectionIdParamSchema } from "./connections.types";
 import * as connectionsService from "./connections.service";
 import { config } from "../../config";
+import { getBoss } from "../../jobs";
+import { db } from "../../db";
+import { connections } from "../../db/schema";
+import { AppError } from "../../middleware/errorHandler";
 
 export async function getAuthUrlHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -57,8 +62,21 @@ export async function syncHandler(req: Request, res: Response, next: NextFunctio
   try {
     const { id } = connectionIdParamSchema.parse(req.params);
     const userId = req.user!.sub;
-    await connectionsService.triggerSync(id, userId);
-    res.json({ status: "synced" });
+
+    const [row] = await db
+      .select({ id: connections.id })
+      .from(connections)
+      .where(and(eq(connections.id, id), eq(connections.userId, userId)))
+      .limit(1);
+
+    if (!row) throw new AppError(404, "Connection not found");
+
+    const boss = getBoss();
+    const jobId = await boss.send("connection-sync", { connectionId: id }, {
+      singletonKey: id,
+    });
+
+    res.json({ jobId, status: "queued" });
   } catch (err) {
     next(err);
   }

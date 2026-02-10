@@ -4,7 +4,7 @@ import { connections } from "../../db/schema";
 import { encrypt, decrypt } from "../../lib/encryption";
 import { getProvider } from "../../providers/registry";
 import { AppError } from "../../middleware/errorHandler";
-import { syncContacts, syncInteractions } from "../sync/sync.service";
+
 import type { ProviderConnection, OAuthTokens } from "../../providers/types";
 
 export function getAuthUrl(providerId: string, userId: string): string {
@@ -82,32 +82,8 @@ export async function disconnect(connectionId: string, userId: string) {
   await db.delete(connections).where(eq(connections.id, connectionId));
 }
 
-export async function triggerSync(connectionId: string, userId: string) {
-  const [row] = await db
-    .select()
-    .from(connections)
-    .where(and(eq(connections.id, connectionId), eq(connections.userId, userId)))
-    .limit(1);
 
-  if (!row) throw new AppError(404, "Connection not found");
-
-  let conn = decryptConnection(row);
-
-  // Refresh tokens if expiring within 5 minutes
-  const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
-  if (conn.tokenExpiresAt && conn.tokenExpiresAt < fiveMinutesFromNow) {
-    const provider = getProvider(row.provider);
-    if (!provider) throw new AppError(500, `Unknown provider: ${row.provider}`);
-
-    const tokens = await provider.refreshTokens(conn);
-    conn = await persistRefreshedTokens(connectionId, tokens, conn);
-  }
-
-  await syncContacts(conn);
-  await syncInteractions(conn);
-}
-
-function decryptConnection(row: typeof connections.$inferSelect): ProviderConnection {
+export function decryptConnection(row: typeof connections.$inferSelect): ProviderConnection {
   return {
     id: row.id,
     userId: row.userId,
@@ -118,7 +94,7 @@ function decryptConnection(row: typeof connections.$inferSelect): ProviderConnec
   };
 }
 
-async function persistRefreshedTokens(
+export async function persistRefreshedTokens(
   connectionId: string,
   tokens: OAuthTokens,
   current: ProviderConnection
