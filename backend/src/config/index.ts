@@ -17,6 +17,9 @@ const envSchema = z.object({
   ZENDESK_CLIENT_SECRET: z.string().min(1),
   ZENDESK_REDIRECT_URI: z.string().url(),
   ZENDESK_SUBDOMAIN: z.string().min(1),
+  ZENDESK_API_TOKEN: z.string().min(1),
+  ZENDESK_EMAIL: z.string().email(),
+  AI_GATEWAY_API_KEY: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

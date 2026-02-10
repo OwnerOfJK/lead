@@ -13,17 +13,10 @@ import type {
 } from "../types";
 
 const subdomain = () => config.ZENDESK_SUBDOMAIN;
-const authUrl = () => `https://${subdomain()}.zendesk.com/oauth/authorizations/new`;
-const tokenUrl = () => `https://${subdomain()}.zendesk.com/oauth/tokens`;
 const apiBase = () => `https://${subdomain()}.zendesk.com/api/v2`;
 
-const SCOPES = "users:read tickets:read";
-
-const zendeskTokenSchema = z.object({
-  access_token: z.string(),
-  refresh_token: z.string(),
-  expires_in: z.number().default(7200),
-});
+const basicAuth = () =>
+  Buffer.from(`${config.ZENDESK_EMAIL}/token:${config.ZENDESK_API_TOKEN}`).toString("base64");
 
 const paginatedUsersSchema = z.object({
   users: z.array(z.object({
@@ -63,81 +56,34 @@ export class ZendeskProvider implements ISourceProvider {
   displayName = "Zendesk";
 
   getAuthUrl(userId: string): string {
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: config.ZENDESK_CLIENT_ID,
-      redirect_uri: config.ZENDESK_REDIRECT_URI,
-      scope: SCOPES,
-      state: userId,
-    });
-    return `${authUrl()}?${params.toString()}`;
+    return `${config.ZENDESK_REDIRECT_URI}?code=dummy&state=${userId}`;
   }
 
-  async handleCallback(code: string): Promise<OAuthTokens> {
-    const res = await fetch(tokenUrl(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grant_type: "authorization_code",
-        code,
-        client_id: config.ZENDESK_CLIENT_ID,
-        client_secret: config.ZENDESK_CLIENT_SECRET,
-        redirect_uri: config.ZENDESK_REDIRECT_URI,
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Zendesk token exchange failed: ${res.status} ${body}`);
-    }
-    const data = zendeskTokenSchema.parse(await res.json());
+  async handleCallback(_code: string): Promise<OAuthTokens> {
     return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
+      accessToken: "zendesk-api-token",
+      refreshToken: "zendesk-api-token",
+      expiresIn: 999999999,
     };
   }
 
-  async refreshTokens(connection: ProviderConnection): Promise<OAuthTokens> {
-    const res = await fetch(tokenUrl(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grant_type: "refresh_token",
-        refresh_token: connection.refreshToken,
-        client_id: config.ZENDESK_CLIENT_ID,
-        client_secret: config.ZENDESK_CLIENT_SECRET,
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Zendesk token refresh failed: ${res.status} ${body}`);
-    }
-    const data = zendeskTokenSchema.parse(await res.json());
+  async refreshTokens(_connection: ProviderConnection): Promise<OAuthTokens> {
     return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
+      accessToken: "zendesk-api-token",
+      refreshToken: "zendesk-api-token",
+      expiresIn: 999999999,
     };
   }
 
-  async revokeTokens(connection: ProviderConnection): Promise<void> {
-    const res = await fetch(`${apiBase()}/oauth/tokens/current.json`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${connection.accessToken}` },
-    });
-    if (!res.ok && res.status !== 404) {
-      const body = await res.text();
-      throw new Error(`Zendesk token revocation failed: ${res.status} ${body}`);
-    }
-  }
+  async revokeTokens(_connection: ProviderConnection): Promise<void> {}
 
-  async fetchContacts(connection: ProviderConnection): Promise<RawContact[]> {
+  async fetchContacts(_connection: ProviderConnection): Promise<RawContact[]> {
     const contacts: RawContact[] = [];
     let url: string | null = `${apiBase()}/users.json?page[size]=100`;
 
     do {
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${connection.accessToken}` },
+        headers: { Authorization: `Basic ${basicAuth()}` },
       });
       if (!res.ok) {
         const body = await res.text();
@@ -178,13 +124,13 @@ export class ZendeskProvider implements ISourceProvider {
     };
   }
 
-  async fetchInteractions(connection: ProviderConnection): Promise<RawInteraction[]> {
+  async fetchInteractions(_connection: ProviderConnection): Promise<RawInteraction[]> {
     const tickets: RawInteraction[] = [];
     let url: string | null = `${apiBase()}/tickets.json?page[size]=100`;
 
     do {
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${connection.accessToken}` },
+        headers: { Authorization: `Basic ${basicAuth()}` },
       });
       if (!res.ok) {
         const body = await res.text();
