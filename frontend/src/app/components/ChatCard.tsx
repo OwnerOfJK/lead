@@ -1,159 +1,119 @@
 'use client';
-import React from 'react'
-import { UserContext } from '@/app/types';
-import { useState, useRef, useEffect } from 'react';
 
-type ChatMessage = {
-  role: 'user' | 'assistant';
-  content: string;
-};
+import { useState, useRef, useEffect, FormEvent } from 'react';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { useAuth } from '../context/AuthContext';
 
-type Props = {
-    context: UserContext;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+interface ChatCardProps {
+  onClose: () => void;
+  contactId: string;
 }
 
-export default function ChatCard({ context, onClose }: Props & { onClose: () => void }) {
-  const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [currentResponse, setCurrentResponse] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+export default function ChatCard({ onClose, contactId }: ChatCardProps) {
+  const { token } = useAuth();
+  const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new DefaultChatTransport({
+      api: `${API_URL}/chat`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: { contactId },
+    }),
+  });
+
+  const isLoading = status === 'submitted' || status === 'streaming';
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory, currentResponse]);
+  }, [messages]);
 
-  async function handleChatSubmit() {
-    if (!message.trim()) return;
-
-    const userMessage = message.trim();
-    setMessage(''); // Clear input immediately
-    setIsLoading(true);
-    setCurrentResponse('');
-
-    // Add user message to chat history
-    const newUserMessage: ChatMessage = { role: 'user', content: userMessage };
-    setChatHistory(prev => [...prev, newUserMessage]);
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ context, message: userMessage, chatHistory }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to get response');
-      }
-
-      // Read the stream
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('No reader available');
-      }
-
-      let accumulatedResponse = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        // Decode the chunk and append to response
-        const chunk = decoder.decode(value, { stream: true });
-        accumulatedResponse += chunk;
-        setCurrentResponse(accumulatedResponse);
-      }
-
-      // Add assistant's complete response to chat history
-      const assistantMessage: ChatMessage = { role: 'assistant', content: accumulatedResponse };
-      setChatHistory(prev => [...prev, assistantMessage]);
-      setCurrentResponse('');
-    } catch (error) {
-      console.error('Error streaming response:', error);
-      const errorMessage: ChatMessage = { role: 'assistant', content: 'Error: Failed to get response. Please try again.' };
-      setChatHistory(prev => [...prev, errorMessage]);
-      setCurrentResponse('');
-    } finally {
-      setIsLoading(false);
-    }
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || isLoading) return;
+    setInput('');
+    sendMessage({ text });
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !isLoading) {
-      handleChatSubmit();
-    }
-  };
+  function getMessageText(msg: (typeof messages)[number]): string {
+    return msg.parts
+      .filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
+      .map((p) => p.text)
+      .join('');
+  }
 
   return (
-    <div className="fixed bottom-4 right-4 w-[350px] h-[500px] bg-gray-400 rounded-xl shadow-xl border flex flex-col p-4 z-50">
-      <div className='flex items-center justify-between mb-2'>
-        <h3 className="font-semibold">💬 AI Assistant</h3>
-        <button onClick={onClose}>
-          ❌
+    <div className="fixed bottom-4 right-4 w-[380px] h-[500px] bg-[var(--background)] border rounded-xl shadow-xl flex flex-col z-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b">
+        <h3 className="text-sm font-semibold">AI Assistant</h3>
+        <button
+          onClick={onClose}
+          className="text-sm text-gray-500 hover:text-red-500"
+        >
+          &times;
         </button>
       </div>
-      <div className="flex-1 overflow-auto text-sm mb-2 space-y-3 pb-2">
-        {chatHistory.length === 0 && !isLoading && (
-          <div className="text-gray-500 text-center mt-4">
-            Ask me anything about this lead!
+      <div className="flex-1 overflow-auto text-sm px-4 py-3 space-y-3">
+        {messages.length === 0 && !isLoading && (
+          <div className="text-gray-500 text-center mt-8">
+            Ask me anything about this contact.
           </div>
         )}
-        {chatHistory.map((msg, idx) => (
+        {messages.map((msg) => (
           <div
-            key={idx}
+            key={msg.id}
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
               className={`max-w-[80%] px-3 py-2 rounded-lg whitespace-pre-wrap ${
                 msg.role === 'user'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-600 text-white'
+                  : 'border text-[var(--foreground)]'
               }`}
             >
-              {msg.content}
+              {getMessageText(msg)}
             </div>
           </div>
         ))}
-        {isLoading && currentResponse && (
+        {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] px-3 py-2 rounded-lg whitespace-pre-wrap bg-gray-600 text-white">
-              {currentResponse}
+            <div className="max-w-[80%] px-3 py-2 rounded-lg border text-gray-500">
+              Thinking...
             </div>
           </div>
         )}
-        {isLoading && !currentResponse && (
+        {error && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] px-3 py-2 rounded-lg bg-gray-600 text-white">
-              Thinking...
+            <div className="max-w-[80%] px-3 py-2 rounded-lg bg-red-600 text-white">
+              Error: {error.message}
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-      <input
-        type="text"
-        placeholder="Type your question..."
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyPress={handleKeyPress}
-        disabled={isLoading}
-        className="px-2 py-1 border rounded w-full text-sm mb-2 disabled:bg-gray-200 disabled:cursor-not-allowed"
-      />
-      <button
-        onClick={handleChatSubmit}
-        disabled={isLoading || !message.trim()}
-        className="bg-blue-600 text-white rounded px-3 py-1 text-sm z-60 disabled:bg-gray-400 disabled:cursor-not-allowed"
-      >
-        {isLoading ? 'Sending...' : 'Send'}
-      </button>
+      <form onSubmit={handleSubmit} className="flex gap-2 px-4 py-3 border-t">
+        <input
+          type="text"
+          placeholder="Type your question..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={isLoading}
+          className="px-3 py-1.5 border rounded flex-1 text-sm bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+        <button
+          type="submit"
+          disabled={isLoading || !input.trim()}
+          className="bg-blue-600 text-white rounded px-3 py-1.5 text-sm hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Send
+        </button>
+      </form>
     </div>
   );
 }
