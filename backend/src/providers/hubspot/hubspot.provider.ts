@@ -16,12 +16,23 @@ import type {
 const HUBSPOT_AUTH_URL = "https://app.hubspot.com/oauth/authorize";
 const HUBSPOT_TOKEN_URL = "https://api.hubapi.com/oauth/v1/token";
 const HUBSPOT_API_BASE = "https://api.hubapi.com";
-const SCOPES = ["crm.objects.contacts.read", "crm.objects.deals.read"];
+const SCOPES = [
+  "crm.objects.contacts.read",
+  "crm.objects.contacts.write",
+  "crm.objects.companies.read",
+  "crm.objects.companies.write",
+  "crm.objects.deals.read",
+  "crm.objects.deals.write",
+  "crm.schemas.contacts.read",
+  "crm.schemas.contacts.write",
+  "crm.schemas.companies.read",
+  "crm.schemas.companies.write",
+];
 
 const paginatedContactsSchema = z.object({
   results: z.array(z.object({
     id: z.string(),
-    properties: z.record(z.unknown()).optional(),
+    properties: z.record(z.string(), z.unknown()).optional(),
   })).default([]),
   paging: z.object({
     next: z.object({ after: z.string() }).optional(),
@@ -31,8 +42,8 @@ const paginatedContactsSchema = z.object({
 const paginatedDealsSchema = z.object({
   results: z.array(z.object({
     id: z.string(),
-    properties: z.record(z.unknown()).optional(),
-    associations: z.record(z.object({
+    properties: z.record(z.string(), z.unknown()).optional(),
+    associations: z.record(z.string(), z.object({
       results: z.array(z.object({ id: z.string() })),
     })).optional(),
   })).default([]),
