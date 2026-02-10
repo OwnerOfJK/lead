@@ -35,3 +35,9 @@ coverage/
 
 # docs
 docs
+
+# skill.sh
+.agents
+
+# Scripts
+scripts
