@@ -10,6 +10,7 @@
     "generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "ai": "^6.0.78",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.38.0",
@@ -17,7 +18,7 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.0",
     "pg-boss": "^10.4.2",
-    "zod": "^3.24.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
