@@ -1,4 +1,4 @@
-# Lead Manager
+# Lead
 
 A multi-source contact intelligence platform that aggregates data from CRM providers (HubSpot, Pipedrive, Zendesk) and support platforms into unified contact records with AI-powered interaction capabilities.
 
