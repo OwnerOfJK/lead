@@ -1,114 +1,77 @@
 # Lead Manager
 
-A comprehensive tool for RevOps teams to streamline lead qualification, context gathering, and sales enablement through automation and AI assistance.
+A multi-source contact intelligence platform that aggregates data from CRM providers (HubSpot, Pipedrive, Zendesk) and support platforms into unified contact records with AI-powered interaction capabilities.
 
-View deployed MVP here: https://lead-manager-woad.vercel.app/
+**Live:** https://lead-manager-woad.vercel.app/
 
-https://github.com/user-attachments/assets/340bf4cb-41c8-463b-a067-808f02698e1c
+## Features
 
-## Project Overview
+- **Multi-Provider Integration** – OAuth connections to HubSpot, Pipedrive, and Zendesk
+- **Unified Contact Records** – Merge contact and interaction data from multiple sources
+- **Automated Sync** – Background synchronization of contacts and interactions with conflict resolution
+- **AI Assistant** – Chat interface to ask questions about contacts using aggregated context
 
-Lead Manager is a full-stack application designed to optimize the sales process by:
+## Tech Stack
 
-1. **Automating Lead Data Collection** - Seamlessly aggregating data from multiple sources (HubSpot, LinkedIn) into a unified interface
-2. **Enhancing Lead Context** - Automatically transcribing sales calls and pulling in LinkedIn profile data for a complete 360° view
-3. **AI-Powered Sales Assistance** - Providing AI chat functionality that can answer questions about leads based on all available context
+- **Frontend:** Next.js 15, React 19, TypeScript, Tailwind CSS v4
+- **Backend:** Express, TypeScript, Drizzle ORM, PostgreSQL
+- **Auth:** JWT (jsonwebtoken), bcryptjs
+- **Orchestration:** Docker Compose
 
-This tool directly addresses key RevOps challenges by:
-- Reducing manual data entry and context switching between platforms
-- Accelerating sales cycles through automated data collection
-- Enabling more personalized outreach with comprehensive lead context
-- Creating new CX opportunities through AI-assisted lead interactions
-
-## Technologies
-
-This project uses the following stack:
-
-- **Frontend**: Next.js/React with TypeScript for a responsive, type-safe UI
-- **API Integrations**: 
-  - **HubSpot** CRM integration for lead management
-  - LinkedIn data collection
-- **AI Engineering**:
-  - OpenAI API for call transcription (Speech-to-Text)
-  - **AI chat assistant** with context-aware responses
-- **Development**: 
-  - Node.js backend with API routes
-  - TypeScript for type safety
-  - Tailwind CSS for modern UI design
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
+- Docker and Docker Compose
+- `.env` file with credentials for CRM providers (see `.env.example`)
 
-- Node.js (v18+ recommended)
-- npm or yarn
-- HubSpot API key
-- OpenAI API key
-
-### Environment Setup
-
-Create a `.env.local` file in the root directory with:
-```
-HUBSPOT_API_KEY=your_hubspot_api_key
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### Installation
+### Development
 
 ```bash
-# Install dependencies
-npm install
+# Start all services (PostgreSQL + backend + frontend)
+just up
 
-# Run the development server
-npm run dev
+# Stop services
+just down
+
+# Apply database migrations
+just migrate
+
+# Backend TypeScript check
+cd backend && npx tsc --noEmit
 ```
-Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-## Key Features
-
-- **Lead List View**: Automatically fetch and display new leads from HubSpot
-- **Data Enrichment**: One-click enrichment of lead data from LinkedIn and call recordings
-- **Context Card**: Visual display of aggregated lead data from multiple sources
-- **AI Assistant**: Chat-based assistant that can answer questions about specific leads using the gathered context
-
-## Future Enhancements
-
-- Webhook integration for real-time lead updates
-- Sales performance analytics dashboard
-- Automated lead scoring based on context
-- Integration with additional data sources
-- Team collaboration features
-
-## Alignment with GTM
-
-- **Process Automation**: Eliminates manual data gathering across platforms
-- **Revenue-Enhancing Innovation**: Enables more informed, context-rich sales conversations
-- **Scalable Workflows**: Creates a repeatable process for lead qualification and enrichment
-- **Technical Proficiency**: Showcases programming skills across Node.js, API integrations, and AI implementation
-- **GTM Stack Integration**: Connects critical sales and marketing data sources
+Services:
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:4000
+- **Database:** localhost:5432
 
 ## Project Structure
 
 ```
-lead_manager/
-├── src/
-│   ├── app/
-│   │   ├── api/             # Backend API routes
-│   │   │   ├── call/        # Call transcription endpoint
-│   │   │   ├── chat/        # AI assistant endpoint
-│   │   │   ├── hubspot/     # HubSpot integration
-│   │   │   └── linkedin/    # LinkedIn data collection
-│   │   ├── components/      # React components
-│   │   ├── lib/            # Utility functions
-│   │   └── types.ts        # TypeScript type definitions
-├── public/                 # Static assets
-└── .env.local              # Environment variables (not committed)
+/
+├── frontend/              # Next.js application
+│   └── src/app/
+│       ├── (auth)/       # Login/register pages
+│       ├── connections/  # OAuth connection management
+│       ├── contacts/     # Contact list and details
+│       ├── components/   # Reusable React components
+│       └── lib/         # Utilities (API client, auth context)
+├── backend/              # Express API
+│   └── src/
+│       ├── modules/
+│       │   ├── auth/     # JWT authentication
+│       │   ├── connections/  # OAuth provider integration
+│       │   ├── contacts/     # Contact CRUD
+│       │   ├── chat/         # AI assistant
+│       │   └── sync/         # Background data synchronization
+│       ├── db/           # Drizzle schema and migrations
+│       ├── middleware/   # Auth, validation, error handling
+│       └── types/        # Shared TypeScript types
+├── docker-compose.yml    # Service orchestration
+└── justfile             # Development commands
 ```
 
-## Improvements
+## Documentation
 
-- Add HubSpot webhook whenever a new contact is added (exclusive to premium members)
-- Collect user-specific LinkedIn data through the API/scraping (LinkedIn API is very limiting)
-- Collect data beyond LinkedIn and call recordings (the more data the better)
-- Get call recordings straight from HubSpot (currently a local recording of a call)
-- Add unit/integrations tests.
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** – System design, data flow, and provider integrations
+- **[CLAUDE.md](./CLAUDE.md)** – Development guidelines and environment setup
