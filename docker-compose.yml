@@ -14,13 +14,15 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - lead
     mem_limit: 1g
     mem_reservation: 512m
 
   backend:
     build: ./backend
-    ports:
-      - "4000:4000"
+    container_name: lead-backend
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
@@ -47,21 +49,63 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./backend/drizzle:/app/drizzle
+    networks:
+      - lead
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lead-backend.rule=Host(`api-lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-backend.entrypoints=web"
+      - "traefik.http.routers.lead-backend.middlewares=redirect-to-https"
+      - "traefik.http.routers.lead-backend-secure.rule=Host(`api-lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-backend-secure.entrypoints=websecure"
+      - "traefik.http.routers.lead-backend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lead-backend.loadbalancer.server.port=4000"
+      - "traefik.docker.network=dokploy-network"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:4000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     mem_limit: 512m
     mem_reservation: 256m
 
   frontend:
     build: ./frontend
-    ports:
-      - "3000:3000"
+    container_name: lead-frontend
+    restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     depends_on:
       - backend
     volumes:
       - ./frontend/src:/app/src
+    networks:
+      - lead
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lead-frontend.rule=Host(`lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-frontend.entrypoints=web"
+      - "traefik.http.routers.lead-frontend.middlewares=redirect-to-https"
+      - "traefik.http.routers.lead-frontend-secure.rule=Host(`lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.lead-frontend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lead-frontend.loadbalancer.server.port=3000"
+      - "traefik.docker.network=dokploy-network"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     mem_limit: 512m
     mem_reservation: 256m
-      
+
 volumes:
   pgdata:
+
+networks:
+  lead:
+    name: lead
+  dokploy-network:
+    external: true
