@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
@@ -24,6 +24,14 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export default function ConnectionsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>}>
+      <ConnectionsContent />
+    </Suspense>
+  );
+}
+
+function ConnectionsContent() {
   const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
