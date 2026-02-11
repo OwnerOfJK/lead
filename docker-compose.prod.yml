@@ -1,0 +1,109 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - lead
+    mem_limit: 1g
+    mem_reservation: 512m
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: lead-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: "4000"
+      NODE_ENV: production
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      HUBSPOT_CLIENT_ID: ${HUBSPOT_CLIENT_ID}
+      HUBSPOT_CLIENT_SECRET: ${HUBSPOT_CLIENT_SECRET}
+      HUBSPOT_REDIRECT_URI: ${HUBSPOT_REDIRECT_URI}
+      PIPEDRIVE_CLIENT_ID: ${PIPEDRIVE_CLIENT_ID}
+      PIPEDRIVE_CLIENT_SECRET: ${PIPEDRIVE_CLIENT_SECRET}
+      PIPEDRIVE_REDIRECT_URI: ${PIPEDRIVE_REDIRECT_URI}
+      ZENDESK_CLIENT_ID: ${ZENDESK_CLIENT_ID}
+      ZENDESK_CLIENT_SECRET: ${ZENDESK_CLIENT_SECRET}
+      ZENDESK_REDIRECT_URI: ${ZENDESK_REDIRECT_URI}
+      ZENDESK_SUBDOMAIN: ${ZENDESK_SUBDOMAIN}
+      ZENDESK_API_TOKEN: ${ZENDESK_API_TOKEN}
+      ZENDESK_EMAIL: ${ZENDESK_EMAIL}
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - lead
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lead-backend.rule=Host(`api-lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-backend.entrypoints=web"
+      - "traefik.http.routers.lead-backend.middlewares=redirect-to-https"
+      - "traefik.http.routers.lead-backend-secure.rule=Host(`api-lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-backend-secure.entrypoints=websecure"
+      - "traefik.http.routers.lead-backend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lead-backend.loadbalancer.server.port=4000"
+      - "traefik.docker.network=dokploy-network"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:4000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 512m
+    mem_reservation: 256m
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: lead-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    depends_on:
+      - backend
+    networks:
+      - lead
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lead-frontend.rule=Host(`lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-frontend.entrypoints=web"
+      - "traefik.http.routers.lead-frontend.middlewares=redirect-to-https"
+      - "traefik.http.routers.lead-frontend-secure.rule=Host(`lead.leaf-books.com`)"
+      - "traefik.http.routers.lead-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.lead-frontend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lead-frontend.loadbalancer.server.port=3000"
+      - "traefik.docker.network=dokploy-network"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 768m
+    mem_reservation: 384m
+
+volumes:
+  pgdata:
+
+networks:
+  lead:
+    name: lead
+  dokploy-network:
+    external: true
