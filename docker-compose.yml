@@ -14,6 +14,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    mem_limit: 1g
+    mem_reservation: 512m
 
   backend:
     build: ./backend
@@ -45,6 +47,8 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./backend/drizzle:/app/drizzle
+    mem_limit: 512m
+    mem_reservation: 256m
 
   frontend:
     build: ./frontend
@@ -56,6 +60,8 @@ services:
       - backend
     volumes:
       - ./frontend/src:/app/src
-
+    mem_limit: 512m
+    mem_reservation: 256m
+      
 volumes:
   pgdata:
